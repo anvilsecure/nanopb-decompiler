@@ -22,8 +22,8 @@ syntax = "proto2";
      required uint32 utime = 3;
  
      oneof payload {
-         MsgType1 msg1 = 4;
-         MsgType2 msg2 = 5;
-         MsgType3 msg3 = 6;
+         MsgType3 msg3 = 4;
+         MsgType1 msg1 = 5;
+         MsgType2 msg2 = 6;
      }
  }
