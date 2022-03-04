@@ -6,6 +6,7 @@ import collections
 
 import ida_bytes
 import ida_kernwin
+import ida_segment
 
 
 def message_name(ea : int):
@@ -112,7 +113,7 @@ class Outputer:
 
 class Decompiler:
 
-    def __init__(self, field_size):
+    def __init__(self, field_size, ptr_size):
         self.messages = typing.OrderedDict[int,typing.List[PBField]]()
 
         self.field_size = field_size
@@ -123,8 +124,13 @@ class Decompiler:
             size_fmt = "H"
         else:
             size_fmt = "I"
+
+        if ptr_size == 32:
+            ptr_fmt = "I"
+        else:
+            ptr_fmt = "Q"
         
-        self.pb_field_fmt = f"<{size_fmt}B{size_fmt}{size_fmt.lower()}{size_fmt}{size_fmt}I"
+        self.pb_field_fmt = f"<{size_fmt}B{size_fmt}{size_fmt.lower()}{size_fmt}{size_fmt}{ptr_fmt}"
         
         self.pb_field_size = struct.calcsize(self.pb_field_fmt)
     
@@ -169,7 +175,7 @@ class Decompiler:
         output.print()
         output.print("syntax = \"proto2\";")
         output.print()
-        output.print('import "nanopb.proto"; // include from the nanopb project, can remove if there are no options')
+        output.print('import "nanopb.proto"; // include from the nanopb project')
         output.print()
 
 
@@ -240,10 +246,17 @@ class Decompiler:
                 
         return str(output)
 
-
-decompiler = Decompiler(16)
-
-decompiler.add_message(ida_kernwin.get_screen_ea())
-
-print(decompiler.to_proto())
+ea = ida_kernwin.get_screen_ea()
+seg = ida_segment.getseg(ea)
+if seg != None:
+    ptr_size = 64 if seg.is_64bit() else 32
+    field_size = ida_kernwin.ask_long(8, "Field Size (8, 16, 32)")
+    if field_size in (8, 16, 32):
+        decompiler = Decompiler(field_size, ptr_size)
+        decompiler.add_message(ea)
+        print(decompiler.to_proto())
+    else:
+        print("Invalid field size:", field_size)
+else:
+    print("Cursor not in a segment")
 
