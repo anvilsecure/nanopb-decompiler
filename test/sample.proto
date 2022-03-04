@@ -26,4 +26,10 @@ syntax = "proto2";
          MsgType1 msg1 = 5;
          MsgType2 msg2 = 6;
      }
+     repeated uint32 many_ints = 7;
+     oneof payload2 {
+         MsgType2 msg4 = 8;
+         MsgType3 msg5 = 9;
+         MsgType1 msg6 = 10;
+     }
  }
