@@ -1,0 +1,15 @@
+# test app
+sample
+
+# auto generated code
+sample.pb
+sample.pb.c
+sample.pb.h
+
+# included decoder
+nanopb
+
+#ida files
+sample.id*
+sample.nam
+sample.til
