@@ -13,3 +13,4 @@ nanopb
 sample.id*
 sample.nam
 sample.til
+sample.i64
