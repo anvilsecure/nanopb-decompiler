@@ -1,5 +1,6 @@
 # macOS spam
 .DS_Store
+*.dSYM/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
