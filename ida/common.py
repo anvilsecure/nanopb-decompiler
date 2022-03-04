@@ -62,7 +62,7 @@ class FieldInfo(typing.Generic[T]):
     
     @property
     def has_max_size(self):
-        return (self.allocation_type == AllocationType.STATIC and self.field_type.name not in ("STRING", "BYTES")) or self.is_fixed_length
+        return (self.allocation_type == AllocationType.STATIC and self.field_type.name in ("STRING", "BYTES")) or self.is_fixed_length
     
     @property
     def is_fixed_length(self):
@@ -138,12 +138,15 @@ class Decompiler:
         def output_message(ea, fields):
             counts = Counters()
             in_one_of = False
+            union_offset = None
 
             output.print(f"message {message_name(ea)} {{")
             output.inc_level()
             for field in fields:
                 if field.repeat_rules == RepeatRule.ONEOF:
-                    if field.data_offset != self.max_value:
+                    # in older versions the data_offset was set to max value for subelements
+                    # in newer versions all of oneof fields have the same data_offset
+                    if field.data_offset != self.max_value and union_offset != field.data_offset:
                         # this is the first element of a oneof/union
                         if in_one_of:
                             # was already in one... so close it
@@ -153,11 +156,13 @@ class Decompiler:
                         output.print(f"oneof union_{counts.oneof} {{")
                         output.inc_level()
                         in_one_of = True
+                        union_offset = field.data_offset
                 else:
                     if in_one_of:
                         # on to something else, close the oneof
                         output.close_level()
                         in_one_of = False
+                        union_offset = None
 
                 if field.is_concrete_type:
                     tokens = []
