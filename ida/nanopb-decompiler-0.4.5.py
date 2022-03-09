@@ -17,8 +17,8 @@ class ScalarType(enum.IntEnum):
     INT = 0x01
     UINT = 0x02
     SINT = 0x03
-    FLOAT = 0x04
-    DOUBLE = 0x05
+    FIXED32 = 0x04
+    FIXED64 = 0x05
 
     LAST_PACKABLE = 0x05
 
