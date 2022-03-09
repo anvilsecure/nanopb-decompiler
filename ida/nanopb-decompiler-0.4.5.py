@@ -81,7 +81,7 @@ class FieldInfo_2(ctypes.Structure, FieldTag_Mixin):
         ("size_offset", ctypes.c_uint8, 4),
         ("data_offset", ctypes.c_uint16),
         ("data_size", ctypes.c_uint16, 12),
-        ("tag_u", ctypes.c_uint8, 4),
+        ("tag_u", ctypes.c_uint16, 4),
     ]
 
 class FieldInfo_4(ctypes.Structure, FieldTag_Mixin):
