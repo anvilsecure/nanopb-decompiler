@@ -67,6 +67,10 @@ class FieldInfo(typing.Generic[T]):
     @property
     def is_fixed_length(self):
         return self.field_type.name == "FIXED_LENGTH_BYTES"
+    
+    @property
+    def is_bytes(self):
+        return self.field_type.name.endswith("BYTES")
 
 class Counters:
 
@@ -109,6 +113,7 @@ class Decompiler:
 
     def __init__(self, field_size : int):
         self.field_size = field_size
+        self.field_size_bytes = field_size // 8
         self.max_value = (2**self.field_size) - 1
         self.messages = typing.OrderedDict[int,typing.List[FieldInfo]]()
     
@@ -179,7 +184,12 @@ class Decompiler:
 
                     if field.has_max_size:
                         # if we are a static type of string/bytes or a field length bytes we will have a max size
-                        options.append(f"(nanopb).max_size = {field.data_size}")
+                        if field.is_bytes and not field.is_fixed_length:
+                            # subtract the size of the length field
+                            size = field.data_size - self.field_size_bytes
+                        else:
+                            size = field.data_size
+                        options.append(f"(nanopb).max_size = {size}")
 
                         if field.is_fixed_length:
                             options.append("(nanopb).fixed_length = true")
