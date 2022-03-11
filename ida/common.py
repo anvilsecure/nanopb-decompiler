@@ -4,6 +4,8 @@ import enum
 import typing
 import dataclasses
 
+class DecompileError(Exception):
+    pass
 
 def message_name(ea : int):
     return "Message_{:X}".format(ea)
@@ -115,7 +117,7 @@ class Decompiler:
         self.field_size = field_size
         self.field_size_bytes = field_size // 8
         self.max_value = (2**self.field_size) - 1
-        self.messages = typing.OrderedDict[int,typing.List[FieldInfo]]()
+        self.messages = typing.OrderedDict[int,list[FieldInfo]]()
     
     def parse_message(self, ea : int):
         return []
@@ -128,6 +130,9 @@ class Decompiler:
             for field in fields:
                 if field.is_submessage:
                     self.add_message(field.extra)
+    
+    def group_fields(self, fields : list[FieldInfo]) -> list[FieldInfo | list[FieldInfo]]:
+        return []
     
     def to_proto(self):
         output = Outputer()
@@ -145,68 +150,57 @@ class Decompiler:
             in_one_of = False
             union_offset = None
 
+            fields = self.group_fields(fields)
+
+
             output.print(f"message {message_name(ea)} {{")
             output.inc_level()
+
+
+            def print_field(field : FieldInfo):
+                tokens = []
+
+                if field.repeat_rules != RepeatRule.ONEOF:
+                    tokens.append(field.label)
+                
+                tokens.append(field.type_name)
+                tokens.append(f"field_{counts.field}")
+                tokens.append("=")
+                tokens.append(f"{field.tag}")
+
+                options = []
+
+                if field.has_max_size:
+                    # if we are a static type of string/bytes or a field length bytes we will have a max size
+                    if field.is_bytes and not field.is_fixed_length:
+                        # subtract the size of the length field
+                        size = field.data_size - self.field_size_bytes
+                    else:
+                        size = field.data_size
+                    options.append(f"(nanopb).max_size = {size}")
+
+                    if field.is_fixed_length:
+                        options.append("(nanopb).fixed_length = true")
+                
+                if field.repeat_rules == RepeatRule.REPEATED:
+                    options.append(f"(nanopb).max_count = {field.array_size}")
+                
+                if len(options) > 0:
+                    tokens.append(f'[{", ".join(options)}]')
+
+                output.print(" ".join(tokens), end=";\n")
+
             for field in fields:
-                if field.repeat_rules == RepeatRule.ONEOF:
-                    # in older versions the data_offset was set to max value for subelements
-                    # in newer versions all of oneof fields have the same data_offset
-                    if field.data_offset != self.max_value and union_offset != field.data_offset:
-                        # this is the first element of a oneof/union
-                        if in_one_of:
-                            # was already in one... so close it
-                            output.close_level()
-
-                        # start a new oneof
-                        output.print(f"oneof union_{counts.oneof} {{")
-                        output.inc_level()
-                        in_one_of = True
-                        union_offset = field.data_offset
+                if isinstance(field, FieldInfo):
+                    print_field(field)
                 else:
-                    if in_one_of:
-                        # on to something else, close the oneof
-                        output.close_level()
-                        in_one_of = False
-                        union_offset = None
-
-                if field.is_concrete_type:
-                    tokens = []
-
-                    if field.repeat_rules != RepeatRule.ONEOF:
-                        tokens.append(field.label)
-                    
-                    tokens.append(field.type_name)
-                    tokens.append(f"field_{counts.field}")
-                    tokens.append("=")
-                    tokens.append(f"{field.tag}")
-
-                    options = []
-
-                    if field.has_max_size:
-                        # if we are a static type of string/bytes or a field length bytes we will have a max size
-                        if field.is_bytes and not field.is_fixed_length:
-                            # subtract the size of the length field
-                            size = field.data_size - self.field_size_bytes
-                        else:
-                            size = field.data_size
-                        options.append(f"(nanopb).max_size = {size}")
-
-                        if field.is_fixed_length:
-                            options.append("(nanopb).fixed_length = true")
-                    
-                    if field.repeat_rules == RepeatRule.REPEATED:
-                        options.append(f"(nanopb).max_count = {field.array_size}")
-                    
-                    if len(options) > 0:
-                        tokens.append(f'[{", ".join(options)}]')
-
-                    output.print(" ".join(tokens), end=";\n")
-                else:
-                    print("Unknown type to ouput:", field)
-
-            if in_one_of:
-                output.close_level()
-
+                    output.print(f"oneof union_{counts.oneof} {{")
+                    output.inc_level()
+                    for oneof_field in field:
+                        print_field(oneof_field)
+                        
+                    output.close_level()
+                
             output.close_level()
     
         for ea, fields in self.messages.items():

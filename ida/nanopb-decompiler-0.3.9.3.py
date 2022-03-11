@@ -73,6 +73,32 @@ class Decompiler0393(Decompiler):
         
         return fields
 
+    def group_fields(self, fields: list[FieldInfo]) -> list[FieldInfo | list[FieldInfo]]:
+        result = []
+        oneof_fields = typing.OrderedDict[int,list[FieldInfo]]()
+        last_offset = None
+
+        for field in fields:
+            if field.repeat_rules == RepeatRule.ONEOF:
+                offset = field.data_offset
+                if offset == self.max_value:
+                    if last_offset == None:
+                        raise DecompileError("Missing the starting field for a oneof group...")
+                    offset = last_offset
+
+                oneof = oneof_fields.get(offset, None)
+                if oneof == None:
+                    oneof = []
+                    oneof_fields[offset] = oneof
+                    result.append(oneof)
+                
+                oneof.append(field)
+                last_offset = offset
+            else:
+                result.append(field)
+        
+        return result
+
 ea = ida_kernwin.get_screen_ea()
 seg = ida_segment.getseg(ea)
 if seg != None:

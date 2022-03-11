@@ -170,6 +170,24 @@ class Decompiler045(Decompiler):
             field_info_ptr += ctypes.sizeof(pb_field)
         
         return fields
+    
+    def group_fields(self, fields: list[FieldInfo]) -> tuple[list[FieldInfo], list[FieldInfo]]:
+        result = []
+        oneof_fields = dict[int,list[FieldInfo]]()
+
+        for field in fields:
+            if field.repeat_rules == RepeatRule.ONEOF:
+                oneof = oneof_fields.get(field.data_offset, None)
+                if oneof == None:
+                    oneof = []
+                    oneof_fields[field.data_offset] = oneof
+                    result.append(oneof)
+                
+                oneof.append(field)
+            else:
+                result.append(field)
+        
+        return result
 
 
 ea = ida_kernwin.get_screen_ea()
