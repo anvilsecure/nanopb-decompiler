@@ -14,3 +14,9 @@ CSRC += $(NANOPB_DIR)/pb_common.c  # The nanopb common parts
 # Build rule for the main program
 sample: $(CSRC)
 	$(CC) $(CFLAGS) -osample $(CSRC)
+
+clean:
+	rm -rf sample sample.dSYM sample.i64
+
+deepclean:
+	rm -rf sample sample.dSYM sample.i64 sample.pb sample.pb.c sample.pb.h
