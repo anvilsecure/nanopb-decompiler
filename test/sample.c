@@ -12,16 +12,13 @@ int main()
     
     /* Encode our message */
     {
-        MyMessage message = MyMessage_init_zero;
+        AllTypes message = AllTypes_init_zero;
         
         /* Create a stream that will write to our buffer. */
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
         
-        /* Fill in some values */
-        message.uid = 13;
-        
         /* Now we are ready to encode the message! */
-        status = pb_encode(&stream, MyMessage_fields, &message);
+        status = pb_encode(&stream, AllTypes_fields, &message);
         message_length = stream.bytes_written;
         
         /* Then just check for any errors.. */
@@ -35,13 +32,13 @@ int main()
     /* Decode the message */
     {
         /* Allocate space for the decoded message. */
-        MyMessage message = MyMessage_init_zero;
+        AllTypes message = AllTypes_init_zero;
         
         /* Create a stream that reads from the buffer. */
         pb_istream_t stream = pb_istream_from_buffer(buffer, message_length);
         
         /* Now we are ready to decode the message. */
-        status = pb_decode(&stream, MyMessage_fields, &message);
+        status = pb_decode(&stream, AllTypes_fields, &message);
         
         /* Check for errors... */
         if (!status)
