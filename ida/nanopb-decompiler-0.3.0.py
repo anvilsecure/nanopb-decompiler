@@ -23,7 +23,7 @@ class ScalarType(enum.IntEnum):
     EXTENSION = 0x08
     FIXED_LENGTH_BYTES = 0x09
 
-class Decompiler0393(Decompiler):
+class Decompiler030(Decompiler):
 
     def __init__(self, field_size : int, is_64bit : int):
         super().__init__(field_size)
@@ -146,7 +146,7 @@ seg = ida_segment.getseg(ea)
 if seg != None:
     field_size = ida_kernwin.ask_long(8, "Field Size (8, 16, 32)")
     if field_size in (8, 16, 32):
-        decompiler = Decompiler0393(field_size, seg.is_64bit())
+        decompiler = Decompiler030(field_size, seg.is_64bit())
         decompiler.add_message(ea)
         print(decompiler.to_proto())
     else:
