@@ -17,9 +17,6 @@ class ScalarType(enum.IntEnum):
     SINT = 0x02
     FIXED32 = 0x03
     FIXED64 = 0x04
-
-    LAST_PACKABLE = 0x04
-
     BYTES = 0x05
     STRING = 0x06
     SUBMESSAGE = 0x07
