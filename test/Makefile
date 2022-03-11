@@ -18,5 +18,5 @@ sample: $(CSRC)
 clean:
 	rm -rf sample sample.dSYM sample.i64
 
-deepclean:
+reset:
 	rm -rf sample sample.dSYM sample.i64 sample.pb sample.pb.c sample.pb.h
