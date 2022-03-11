@@ -148,6 +148,14 @@ class Decompiler045(Decompiler):
         field_info_ptr, submsg_info_ptr, default_value_ptr = struct.unpack(self.pb_msgdesc_fmt,
                                                                     ida_bytes.get_bytes(ea, self.pb_msgdesc_size))
 
+        # first we are going to read in the defaults... They are stored in wire format as a PB stream
+        defaults = dict[int,PBField]()
+        if default_value_ptr != None and default_value_ptr != 0:
+            defaults_decoder = PBDecoder(default_value_ptr)
+            for field in defaults_decoder.parse():
+                defaults[field.field_number] = field
+        print(defaults)
+        
         fields = []
 
         while True:
@@ -156,11 +164,28 @@ class Decompiler045(Decompiler):
                 # indicates the end of the array
                 break
 
-            if pb_field.type & 0x0f in (ScalarType.SUBMESSAGE, ScalarType.SUBMESSAGE_CB):
+            field_type = ScalarType(pb_field.type & 0x0f)
+            if field_type in (ScalarType.SUBMESSAGE, ScalarType.SUBMESSAGE_CB):
                 extra = self.read_ptr_func(submsg_info_ptr)
                 submsg_info_ptr += self.ptr_size
             else:
-                extra = 0
+                # Lets lookup a default
+                extra = None
+                if pb_field.tag in defaults:
+                    default = defaults[pb_field.tag]
+                    if field_type == ScalarType.STRING:
+                        extra = default.str
+                    elif field_type == ScalarType.SINT:
+                        extra = default.sint
+                    elif field_type == ScalarType.BOOL:
+                        extra = default.bool
+                    elif field_type == ScalarType.INT:
+                        if pb_field.data_size == 4:
+                            extra = default.int32
+                        else:
+                            extra = default.int64
+                    else:
+                        extra = default.data
                 
             field = FieldInfo045.from_pb_field_info(pb_field, extra)
 

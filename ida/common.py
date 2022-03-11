@@ -3,6 +3,9 @@ import io
 import enum
 import typing
 import dataclasses
+import struct
+
+import ida_bytes
 
 class DecompileError(Exception):
     pass
@@ -170,6 +173,17 @@ class Decompiler:
 
                 options = []
 
+                # see if we have a default
+                if field.extra != None and not field.is_submessage:
+                    extra = field.extra
+                    if isinstance(extra, str):
+                        extra = extra.replace('"', '\\"')
+                        extra = f'"{extra}"'
+                    elif isinstance(extra, bytes):
+                        extra = "".join(map(lambda x: "\\x{:02x}".format(x), extra))
+                        extra = f'"{extra}"'
+                    options.append(f"default={extra}")
+
                 if field.has_max_size:
                     # if we are a static type of string/bytes or a field length bytes we will have a max size
                     if field.is_bytes and not field.is_fixed_length:
@@ -208,3 +222,126 @@ class Decompiler:
             output.print()
                 
         return str(output)
+
+class PBDecodeError(Exception):
+    pass
+
+class PBWireType(enum.IntEnum):
+    VARINT = 0
+    FIXED64 = 1
+    LENGTH_DELIMITED = 2
+    START_GROUP = 3
+    END_GROUP = 4
+    FIXED32 = 5
+
+@dataclasses.dataclass
+class PBField:
+    field_number : int
+    wire_type : PBWireType
+    data : int | bytes
+
+    @property
+    def bool(self):
+        return bool(self.data)
+
+    @property
+    def int32(self):
+        # negative numbers are stored with 64-bits
+        data = self.data & 0xffffffff
+        if data & (1 << 31):
+            return -1 * (((~data) & 0xffffffff) + 1)
+        else:
+            return data
+    
+    @property
+    def int64(self):
+        if self.data & (1 << 63):
+            return -1 * (((~self.data) & 0xffffffffffffffff) + 1)
+        else:
+            return self.data
+    
+    @property
+    def sint(self):
+        if self.data & 1:
+            return (~self.data) >> 1
+        else:
+            return self.data >> 1
+
+    @property
+    def str(self):
+        return str(self.data, "utf8", errors="replace")
+
+class PBStream:
+
+    def __init__(self, ea, size=None):
+        self.ea = ea
+        self.end = None if size == None else ea + size
+    
+    def _check(self, length : int):
+        if self.end == None:
+            return
+        if self.ea + length > self.end:
+            raise PBDecodeError("Not enough bytes")
+
+    def next_byte(self):
+        self._check(1)
+        tmp = ida_bytes.get_byte(self.ea)
+        self.ea += 1
+        return tmp
+    
+    def next_bytes(self, count : int):
+        self._check(count)
+        tmp = ida_bytes.get_bytes(self.ea, count)
+        self.ea += count
+        return tmp
+    
+    def next_varint(self):
+        value = 0
+        bitpos = 0
+        while True:
+            tmp = self.next_byte()
+            value |= (tmp & 0x7f) << bitpos
+            if tmp & 0x80 == 0:
+                break
+            bitpos += 7
+        return value
+    
+    def next_fixed32(self):
+        return struct.unpack("<I", self.next_bytes(4))[0]
+    
+    def next_fixed64(self):
+        return struct.unpack("<Q", self.next_bytes(8))[0]
+    
+
+class PBDecoder:
+
+    def __init__(self, ea : int):
+        self.stream = PBStream(ea)
+    
+    def parse(self):
+        fields = []
+        while True:
+            tag = self.stream.next_varint()
+            if tag == 0:
+                break
+
+            field_num = tag >> 3
+            wire_type = PBWireType(tag & 0b111)
+
+            if wire_type == PBWireType.VARINT:
+                data = self.stream.next_varint()
+            elif wire_type == PBWireType.FIXED32:
+                data = self.stream.next_fixed32()
+            elif wire_type == PBWireType.FIXED64:
+                data = self.stream.next_fixed64()
+            elif wire_type == PBWireType.LENGTH_DELIMITED:
+                length = self.stream.next_varint()
+                data = self.stream.next_bytes(length)
+            else:
+                raise PBDecodeError(f"Unhandled wiretype: {wire_type}")
+            
+            fields.append(PBField(field_num, wire_type, data))
+        
+        return fields
+
+    

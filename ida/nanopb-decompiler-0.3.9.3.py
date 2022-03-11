@@ -1,3 +1,4 @@
+from ctypes.wintypes import SC_HANDLE
 import enum
 import typing
 import struct
@@ -32,10 +33,13 @@ class Decompiler0393(Decompiler):
 
         if field_size == 8:
             size_fmt = "B"
+            self.ida_get_field_bits = ida_bytes.get_byte
         elif field_size == 16:
             size_fmt = "H"
+            self.ida_get_field_bits = ida_bytes.get_16bit
         else:
             size_fmt = "I"
+            self.ida_get_field_bits = ida_bytes.get_32bit
 
         if is_64bit:
             ptr_fmt = "Q"
@@ -58,10 +62,51 @@ class Decompiler0393(Decompiler):
             if tag == 0:
                 # indicates the end of the array
                 break
+            
+            field_type = ScalarType(field_type & 0b1111)
+
+            if extra == 0:
+                extra = None
+            else:
+                if field_type == ScalarType.FIXED32:
+                    extra = ida_bytes.get_32bit(extra)
+                elif field_type == ScalarType.FIXED64:
+                    extra = ida_bytes.get_64bit(extra)
+                elif field_type in (ScalarType.INT, ScalarType.UINT, ScalarType.SINT):
+                    if data_size == 1:
+                        extra = ida_bytes.get_byte(extra)
+                        sign_mask = (1 << 7)
+                    elif data_size == 2:
+                        extra = ida_bytes.get_16bit(extra)
+                        sign_mask = (1 << 15)
+                    elif data_size == 4:
+                        extra = ida_bytes.get_32bit(extra)
+                        sign_mask = (1 << 31)
+                    else:
+                        extra = ida_bytes.get_64bit(extra)
+                        sign_mask = (1 << 63)
+                    if field_type != ScalarType.UINT:
+                        if extra & sign_mask:
+                            extra = -1 * (((~extra) & (sign_mask - 1)) + 1)
+                elif field_type == ScalarType.FIXED_LENGTH_BYTES:
+                    extra = ida_bytes.get_bytes(extra, data_size)
+                elif field_type == ScalarType.BYTES:
+                    tmp = self.ida_get_field_bits(extra)
+                    extra = ida_bytes.get_bytes(extra + self.field_size_bytes, tmp)
+                elif field_type == ScalarType.STRING:
+                    s = ""
+                    while len(s) < data_size:
+                        tmp = ida_bytes.get_byte(extra)
+                        if tmp == 0x00:
+                            break
+                        s += chr(tmp)
+                        extra += 1
+                    extra = s
+                        
 
             field = FieldInfo(
                 tag,
-                ScalarType(field_type & 0b1111),
+                field_type,
                 RepeatRule((field_type >> 4) & 0b11),
                 AllocationType((field_type >> 6) & 0b11),
                 data_offset, size_offset, data_size, array_size, extra)
