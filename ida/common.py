@@ -11,7 +11,7 @@ def message_name(ea : int):
     return "Message_{:X}".format(ea)
 
 class RepeatRule(enum.IntEnum):
-    REQURIED = 0x00
+    REQUIRED = 0x00
     OPTIONAL = 0x01
     SINGULAR = 0x01
     REPEATED = 0x02
