@@ -7,7 +7,7 @@ sample.pb.c
 sample.pb.h
 
 # included decoder
-nanopb
+#nanopb
 
 #ida files
 sample.id*
