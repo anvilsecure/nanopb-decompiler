@@ -45,7 +45,7 @@ The internal `nanopb` data structures changes between versions and required diff
 | 0.3.0   | 0.3.9.4        | [nanopb-decompiler-0.3.0.py](https://github.com/anvilventures/nanopb-decompiler/blob/main/ida/nanopb-decompiler-0.3.0.py) |
 | 0.3.9.4 | 0.3.9.8        | [nanopb-decompiler-0.3.9.4.py](https://github.com/anvilventures/nanopb-decompiler/blob/main/ida/nanopb-decompiler-0.3.9.4.py) |
 | 0.4.0   | 0.4.2          | [nanopb-decompiler-0.4.0.py](https://github.com/anvilventures/nanopb-decompiler/blob/main/ida/nanopb-decompiler-0.4.0.py) |
-| 0.4.3   | latest (0.4.5) | [nanopb-decompiler-0.4.3.py](https://github.com/anvilventures/nanopb-decompiler/blob/main/ida/nanopb-decompiler-0.4.3.py) |
+| 0.4.3   | latest (0.4.6) | [nanopb-decompiler-0.4.3.py](https://github.com/anvilventures/nanopb-decompiler/blob/main/ida/nanopb-decompiler-0.4.3.py) |
 
 `nanopb` does not appear to embedded the version number, so some RE will be required to figure out which script to use, or just try them all. Save first, as the scripts can go into infinite loops with invalid data.
 
